@@ -94,15 +94,19 @@ defmodule Ecto.Repo do
       {otp_app, adapter, config} = Ecto.Repo.Supervisor.compile_config(__MODULE__, opts)
       @otp_app otp_app
       @adapter adapter
-      @config  config
+      @config config
       @before_compile adapter
 
       loggers =
         Enum.reduce(opts[:loggers] || config[:loggers] || [Ecto.LogEntry], quote(do: entry), fn
           mod, acc when is_atom(mod) ->
             quote do: unquote(mod).log(unquote(acc))
-          {Ecto.LogEntry, :log, [level]}, _acc when not level in [:error, :info, :warn, :debug] ->
-            raise ArgumentError, "the log level #{inspect level} is not supported in Ecto.LogEntry"
+
+          {Ecto.LogEntry, :log, [level]}, _acc
+          when not (level in [:error, :info, :warn, :debug]) ->
+            raise ArgumentError,
+                  "the log level #{inspect(level)} is not supported in Ecto.LogEntry"
+
           {mod, fun, args}, acc ->
             quote do: unquote(mod).unquote(fun)(unquote(acc), unquote_splicing(args))
         end)
@@ -226,6 +230,7 @@ defmodule Ecto.Repo do
 
       def preload(struct_or_structs, preloads, opts \\ [])
       def preload(nil, _, _), do: nil
+
       def preload(struct_or_structs, preloads, opts) do
         Ecto.Repo.Preloader.preload(struct_or_structs, __MODULE__, preloads, opts)
       end
@@ -241,7 +246,7 @@ defmodule Ecto.Repo do
   @doc """
   Returns the adapter tied to the repository.
   """
-  @callback __adapter__ :: Ecto.Adapter.t
+  @callback __adapter__ :: Ecto.Adapter.t()
 
   @doc """
   A callback invoked by adapters that logs the given action.
@@ -249,14 +254,14 @@ defmodule Ecto.Repo do
   See `Ecto.LogEntry` for more information and `Ecto.Repo` module
   documentation on setting up your own loggers.
   """
-  @callback __log__(entry :: Ecto.LogEntry.t) :: Ecto.LogEntry.t
+  @callback __log__(entry :: Ecto.LogEntry.t()) :: Ecto.LogEntry.t()
 
   @doc """
   Returns the adapter configuration stored in the `:otp_app` environment.
 
   Dynamic configuration is not reflected on this value.
   """
-  @callback config() :: Keyword.t
+  @callback config() :: Keyword.t()
 
   @doc """
   Starts any connection pooling or supervision and return `{:ok, pid}`
@@ -270,9 +275,10 @@ defmodule Ecto.Repo do
   See the configuration in the moduledoc for options shared between adapters,
   for adapter-specific configuration see the adapter's documentation.
   """
-  @callback start_link(opts :: Keyword.t) :: {:ok, pid} |
-                            {:error, {:already_started, pid}} |
-                            {:error, term}
+  @callback start_link(opts :: Keyword.t()) ::
+              {:ok, pid}
+              | {:error, {:already_started, pid}}
+              | {:error, term}
 
   @doc """
   A callback executed when the repo starts or when configuration is read.
@@ -286,7 +292,7 @@ defmodule Ecto.Repo do
   application environment. It must return `{:ok, keyword}` with the updated
   list of configuration or `:ignore` (only in the `:supervisor` case).
   """
-  @callback init(:supervisor | :dry_run, config :: Keyword.t) :: {:ok, Keyword.t} | :ignore
+  @callback init(:supervisor | :dry_run, config :: Keyword.t()) :: {:ok, Keyword.t()} | :ignore
 
   @doc """
   Shuts down the repository represented by the given pid.
@@ -309,7 +315,8 @@ defmodule Ecto.Repo do
       MyRepo.get(Post, 42)
 
   """
-  @callback get(queryable :: Ecto.Queryable.t, id :: term, opts :: Keyword.t) :: Ecto.Schema.t | nil | no_return
+  @callback get(queryable :: Ecto.Queryable.t(), id :: term, opts :: Keyword.t()) ::
+              Ecto.Schema.t() | nil | no_return
 
   @doc """
   Similar to `get/3` but raises `Ecto.NoResultsError` if no record was found.
@@ -323,7 +330,8 @@ defmodule Ecto.Repo do
       MyRepo.get!(Post, 42)
 
   """
-  @callback get!(queryable :: Ecto.Queryable.t, id :: term, opts :: Keyword.t) :: Ecto.Schema.t | nil | no_return
+  @callback get!(queryable :: Ecto.Queryable.t(), id :: term, opts :: Keyword.t()) ::
+              Ecto.Schema.t() | nil | no_return
 
   @doc """
   Fetches a single result from the query.
@@ -339,7 +347,11 @@ defmodule Ecto.Repo do
       MyRepo.get_by(Post, title: "My post")
 
   """
-  @callback get_by(queryable :: Ecto.Queryable.t, clauses :: Keyword.t | map, opts :: Keyword.t) :: Ecto.Schema.t | nil | no_return
+  @callback get_by(
+              queryable :: Ecto.Queryable.t(),
+              clauses :: Keyword.t() | map,
+              opts :: Keyword.t()
+            ) :: Ecto.Schema.t() | nil | no_return
 
   @doc """
   Similar to `get_by/3` but raises `Ecto.NoResultsError` if no record was found.
@@ -353,7 +365,11 @@ defmodule Ecto.Repo do
       MyRepo.get_by!(Post, title: "My post")
 
   """
-  @callback get_by!(queryable :: Ecto.Queryable.t, clauses :: Keyword.t | map, opts :: Keyword.t) :: Ecto.Schema.t | nil | no_return
+  @callback get_by!(
+              queryable :: Ecto.Queryable.t(),
+              clauses :: Keyword.t() | map,
+              opts :: Keyword.t()
+            ) :: Ecto.Schema.t() | nil | no_return
 
   @doc """
   Calculate the given `aggregate` over the given `field`.
@@ -380,8 +396,12 @@ defmodule Ecto.Repo do
       query = from Post, limit: 10
       Repo.aggregate(query, :avg, :visits)
   """
-  @callback aggregate(queryable :: Ecto.Queryable.t, aggregate :: :avg | :count | :max | :min | :sum,
-                      field :: atom, opts :: Keyword.t) :: term | nil
+  @callback aggregate(
+              queryable :: Ecto.Queryable.t(),
+              aggregate :: :avg | :count | :max | :min | :sum,
+              field :: atom,
+              opts :: Keyword.t()
+            ) :: term | nil
 
   @doc """
   Fetches a single result from the query.
@@ -392,7 +412,8 @@ defmodule Ecto.Repo do
 
   See the "Shared options" section at the module documentation.
   """
-  @callback one(queryable :: Ecto.Queryable.t, opts :: Keyword.t) :: Ecto.Schema.t | nil | no_return
+  @callback one(queryable :: Ecto.Queryable.t(), opts :: Keyword.t()) ::
+              Ecto.Schema.t() | nil | no_return
 
   @doc """
   Similar to `one/2` but raises `Ecto.NoResultsError` if no record was found.
@@ -403,7 +424,8 @@ defmodule Ecto.Repo do
 
   See the "Shared options" section at the module documentation.
   """
-  @callback one!(queryable :: Ecto.Queryable.t, opts :: Keyword.t) :: Ecto.Schema.t | no_return
+  @callback one!(queryable :: Ecto.Queryable.t(), opts :: Keyword.t()) ::
+              Ecto.Schema.t() | no_return
 
   @doc """
   Preloads all associations on the given struct or structs.
@@ -437,8 +459,9 @@ defmodule Ecto.Repo do
       posts = Repo.preload posts, comments: from(c in Comment, order_by: c.published_at)
 
   """
-  @callback preload(struct_or_structs, preloads :: term, opts :: Keyword.t) ::
-                    struct_or_structs when struct_or_structs: [Ecto.Schema.t] | Ecto.Schema.t
+  @callback preload(struct_or_structs, preloads :: term, opts :: Keyword.t()) ::
+              struct_or_structs
+            when struct_or_structs: [Ecto.Schema.t()] | Ecto.Schema.t()
 
   @doc """
   Fetches all entries from the data store matching the given query.
@@ -460,7 +483,7 @@ defmodule Ecto.Repo do
            select: p.title
       MyRepo.all(query)
   """
-  @callback all(queryable :: Ecto.Query.t, opts :: Keyword.t) :: [Ecto.Schema.t] | no_return
+  @callback all(queryable :: Ecto.Query.t(), opts :: Keyword.t()) :: [Ecto.Schema.t()] | no_return
 
   @doc """
   Returns a lazy enumerable that emits all entries from the data store
@@ -490,7 +513,7 @@ defmodule Ecto.Repo do
         Enum.to_list(stream)
       end)
   """
-  @callback stream(queryable :: Ecto.Query.t, opts :: Keyword.t) :: Enum.t
+  @callback stream(queryable :: Ecto.Query.t(), opts :: Keyword.t()) :: Enum.t()
 
   @doc """
   Inserts all entries into the repository.
@@ -533,6 +556,10 @@ defmodule Ecto.Repo do
     * `:conflict_target` - Which columns to verify for conflicts. If
       none is specified, the conflict target is left up to the database
       and is usually made of primary keys and/or unique/exclusion constraints.
+      It may also be `{:constraint, constraint_name_as_atom}` in databases
+      that support the "ON CONSTRAINT" expression, or `{:unsafe_fragment, binary_fragment}`
+      to pass any expression to the database without any sanitization, such as
+      `ON CONFLICT (coalesce(firstname, ""), coalesce(lastname, ""))`.
 
   See the "Shared options" section at the module documentation for
   remaining options.
@@ -573,8 +600,11 @@ defmodule Ecto.Repo do
   the number of attempted entries plus the number of entries modified
   by the UPDATE query.
   """
-  @callback insert_all(schema_or_source :: binary | {binary, Ecto.Schema.t} | Ecto.Schema.t,
-                       entries :: [map | Keyword.t], opts :: Keyword.t) :: {integer, nil | [term]} | no_return
+  @callback insert_all(
+              schema_or_source :: binary | {binary, Ecto.Schema.t()} | Ecto.Schema.t(),
+              entries :: [map | Keyword.t()],
+              opts :: Keyword.t()
+            ) :: {integer, nil | [term]} | no_return
 
   @doc """
   Updates all entries matching the given query with the given values.
@@ -619,8 +649,12 @@ defmodule Ecto.Repo do
       from(p in Post, where: p.id < 10, update: [set: [title: fragment("?", new_title)]])
       |> MyRepo.update_all([])
   """
-  @callback update_all(queryable :: Ecto.Queryable.t, updates :: Keyword.t, opts :: Keyword.t) ::
-                       {integer, nil | [term]} | no_return
+  @callback update_all(
+              queryable :: Ecto.Queryable.t(),
+              updates :: Keyword.t(),
+              opts :: Keyword.t()
+            ) ::
+              {integer, nil | [term]} | no_return
 
   @doc """
   Deletes all entries matching the given query.
@@ -650,8 +684,8 @@ defmodule Ecto.Repo do
 
       from(p in Post, where: p.id < 10) |> MyRepo.delete_all
   """
-  @callback delete_all(queryable :: Ecto.Queryable.t, opts :: Keyword.t) ::
-                       {integer, nil | [term]} | no_return
+  @callback delete_all(queryable :: Ecto.Queryable.t(), opts :: Keyword.t()) ::
+              {integer, nil | [term]} | no_return
 
   @doc """
   Inserts a struct or a changeset.
@@ -739,8 +773,11 @@ defmodule Ecto.Repo do
                                      on_conflict: on_conflict)
 
   """
-  @callback insert(struct_or_changeset :: Ecto.Schema.t | Ecto.Changeset.t, opts :: Keyword.t) ::
-            {:ok, Ecto.Schema.t} | {:error, Ecto.Changeset.t}
+  @callback insert(
+              struct_or_changeset :: Ecto.Schema.t() | Ecto.Changeset.t(),
+              opts :: Keyword.t()
+            ) ::
+              {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()}
 
   @doc """
   Updates a changeset using its primary key.
@@ -779,8 +816,8 @@ defmodule Ecto.Repo do
         {:error, changeset} -> # Something went wrong
       end
   """
-  @callback update(changeset :: Ecto.Changeset.t, opts :: Keyword.t) ::
-            {:ok, Ecto.Schema.t} | {:error, Ecto.Changeset.t}
+  @callback update(changeset :: Ecto.Changeset.t(), opts :: Keyword.t()) ::
+              {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()}
 
   @doc """
   Inserts or updates a changeset depending on whether the struct is persisted
@@ -820,8 +857,11 @@ defmodule Ecto.Repo do
         {:error, changeset} -> # Something went wrong
       end
   """
-  @callback insert_or_update(struct_or_changeset :: Ecto.Schema.t | Ecto.Changeset.t, opts :: Keyword.t) ::
-            {:ok, Ecto.Schema.t} | {:error, Ecto.Changeset.t}
+  @callback insert_or_update(
+              struct_or_changeset :: Ecto.Schema.t() | Ecto.Changeset.t(),
+              opts :: Keyword.t()
+            ) ::
+              {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()}
 
   @doc """
   Deletes a struct using its primary key.
@@ -850,33 +890,45 @@ defmodule Ecto.Repo do
       end
 
   """
-  @callback delete(struct_or_changeset :: Ecto.Schema.t | Ecto.Changeset.t, opts :: Keyword.t) ::
-            {:ok, Ecto.Schema.t} | {:error, Ecto.Changeset.t}
+  @callback delete(
+              struct_or_changeset :: Ecto.Schema.t() | Ecto.Changeset.t(),
+              opts :: Keyword.t()
+            ) ::
+              {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()}
 
   @doc """
   Same as `insert/2` but returns the struct or raises if the changeset is invalid.
   """
-  @callback insert!(struct_or_changeset :: Ecto.Schema.t | Ecto.Changeset.t, opts :: Keyword.t) ::
-            Ecto.Schema.t | no_return
+  @callback insert!(
+              struct_or_changeset :: Ecto.Schema.t() | Ecto.Changeset.t(),
+              opts :: Keyword.t()
+            ) ::
+              Ecto.Schema.t() | no_return
 
   @doc """
   Same as `update/2` but returns the struct or raises if the changeset is invalid.
   """
-  @callback update!(changeset :: Ecto.Changeset.t, opts :: Keyword.t) ::
-            Ecto.Schema.t | no_return
+  @callback update!(changeset :: Ecto.Changeset.t(), opts :: Keyword.t()) ::
+              Ecto.Schema.t() | no_return
 
   @doc """
   Same as `insert_or_update/2` but returns the struct or raises if the changeset
   is invalid.
   """
-  @callback insert_or_update!(struct_or_changeset :: Ecto.Schema.t | Ecto.Changeset.t, opts :: Keyword.t) ::
-            Ecto.Schema.t | no_return
+  @callback insert_or_update!(
+              struct_or_changeset :: Ecto.Schema.t() | Ecto.Changeset.t(),
+              opts :: Keyword.t()
+            ) ::
+              Ecto.Schema.t() | no_return
 
   @doc """
   Same as `delete/2` but returns the struct or raises if the changeset is invalid.
   """
-  @callback delete!(struct_or_changeset :: Ecto.Schema.t | Ecto.Changeset.t, opts :: Keyword.t) ::
-            Ecto.Schema.t | no_return
+  @callback delete!(
+              struct_or_changeset :: Ecto.Schema.t() | Ecto.Changeset.t(),
+              opts :: Keyword.t()
+            ) ::
+              Ecto.Schema.t() | no_return
 
   @doc """
   Runs the given function or `Ecto.Multi` inside a transaction.
@@ -936,8 +988,8 @@ defmodule Ecto.Repo do
       |> MyRepo.transaction
 
   """
-  @callback transaction(fun_or_multi :: fun | Ecto.Multi.t, opts :: Keyword.t) ::
-    {:ok, any} | {:error, any} | {:error, atom, any, %{atom => any}}
+  @callback transaction(fun_or_multi :: fun | Ecto.Multi.t(), opts :: Keyword.t()) ::
+              {:ok, any} | {:error, any} | {:error, atom, any, %{atom => any}}
   @optional_callbacks [transaction: 2]
 
   @doc """
@@ -1003,5 +1055,6 @@ defmodule Ecto.Repo do
       [%User{...}, ...]
 
   """
-  @callback load(Ecto.Schema.t | map(), map() | Keyword.t | {list, list}) :: Ecto.Schema.t | map()
+  @callback load(Ecto.Schema.t() | map(), map() | Keyword.t() | {list, list}) ::
+              Ecto.Schema.t() | map()
 end

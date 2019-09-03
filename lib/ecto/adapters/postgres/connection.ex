@@ -192,6 +192,10 @@ if Code.ensure_loaded?(Postgrex) do
     defp on_conflict({query, _, targets}, _header),
       do: [" ON CONFLICT ", conflict_target(targets), "DO " | update_all(query, "UPDATE SET ")]
 
+    defp conflict_target({:constraint, constraint}),
+      do: ["ON CONSTRAINT ", quote_name(constraint), ?\s]
+    defp conflict_target({:unsafe_fragment, fragment}),
+      do: [fragment, ?\s]
     defp conflict_target([]),
       do: []
     defp conflict_target(targets),
